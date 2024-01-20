@@ -31,15 +31,33 @@ public class PostingsList {
 
     /** Append with a docID */
     public void insertDocID(int docID) {
-        for (PostingsEntry entry: list) {
-            if (entry.docID == docID) {
-                return;
-            }
+        // for (PostingsEntry entry: list) {
+        //     if (entry.docID == docID) {
+        //         return;
+        //     }
+        // }
+        if (!list.isEmpty() && list.getLast().docID == docID) {
+            return;
         }
-
         PostingsEntry entry = new PostingsEntry();
         entry.docID = docID;
         list.add(entry);
+    }
+
+    /* Intersect two PostingLists */
+    public PostingsList intersect(PostingsList other) {
+        PostingsList result = new PostingsList();
+
+        for (int i = 0, j = 0; i < list.size(); i++) {
+            while (j < other.list.size() - 1 && other.list.get(j).docID < list.get(i).docID) {
+                j++;
+            }
+            if (list.get(i).docID == other.list.get(j).docID) {
+                result.insertDocID(list.get(i).docID);
+            }
+        }
+
+        return result;
     }
 }
 

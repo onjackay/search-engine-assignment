@@ -7,6 +7,8 @@
 
 package ir;
 
+import ir.Query.QueryTerm;
+
 /**
  *  Searches an index for results of a query.
  */
@@ -32,7 +34,16 @@ public class Searcher {
         //
         //  REPLACE THE STATEMENT BELOW WITH YOUR CODE
         //
-        // TODO: multiword query
-        return index.getPostings(query.queryterm.getFirst().term);
+        if (query.queryterm.isEmpty()) {
+            return new PostingsList();
+        }
+        else {
+            PostingsList resultList = index.getPostings(query.queryterm.getFirst().term);
+            for (int i = 1; i < query.queryterm.size(); i++) {
+                QueryTerm queryterm = query.queryterm.get(i);
+                resultList = resultList.intersect(index.getPostings(queryterm.term));
+            }
+            return resultList;
+        }
     }
 }
