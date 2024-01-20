@@ -1,0 +1,1 @@
+INDEX VERSION 1.134+D:\kth\24sp\2477\assignment1\assignment1\.metadata\.plugins\org.eclipse.jdt.core

@@ -1,0 +1,58 @@
+//
+//  Information retrieval course
+//  First version: Johan Boye 2016
+//
+// In this file you can put your regular expressions
+// for matching non-standard words (like mail addresses).
+//
+// As you have probably already understood, lines beginning
+// with "//" are comments.
+//
+// The regular expression below is an example of a useful
+// pattern. You can keep it, modify it, or remove it, as you
+// wish.
+
+
+// ADD YOUR PATTERNS HERE
+
+// Email address
+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+
+// Url
+\b(?:https?|ftp):\/\/\S+
+
+// Quote
+(?<=')[a-zA-Z0-9]+(?=')
+
+// Apostrophe
+[a-zA-Z0-9]*'[a-zA-Z0-9]+
+
+// Abbreviation (e.g.)
+[a-zA-Z]+\.[a-zA-Z]+\.
+
+// Hyphen-connected word
+[a-zA-Z0-9]+(-[a-zA-Z0-9]+)+
+
+// Twenty-four seven
+\d+/\d+
+
+// Number with punctuation (2.4.1; 1,000)
+\d+([\.\,]\d+)+
+
+// Phone number
+\+[\d]+(-[\d]+)*
+
+// Dollar
+\$\d+([\.\,]\d+)*
+
+// File name
+[a-zA-Z0-9_]+\.[a-z]+
+
+// Time
+[\d]+(:[\d]+)+
+
+// The patterns will be tried from top to bottom, so it is a
+// good idea to put more specific patterns above more general
+// patterns.
+
+
