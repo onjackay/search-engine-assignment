@@ -32,6 +32,7 @@ public class Searcher {
         //
         //  REPLACE THE STATEMENT BELOW WITH YOUR CODE
         //
-        return null;
+        // TODO: multiword query
+        return index.getPostings(query.queryterm.getFirst().term);
     }
 }

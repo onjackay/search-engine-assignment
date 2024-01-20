@@ -29,6 +29,16 @@ public class HashedIndex implements Index {
         //
         // YOUR CODE HERE
         //
+        PostingsList postingList = index.get(token);
+        if (postingList == null) {
+            postingList = new PostingsList();
+            index.put(token, postingList);
+
+            postingList.insertDocID(docID);
+        }
+        else {
+            postingList.insertDocID(docID);
+        }
     }
 
 
@@ -40,7 +50,7 @@ public class HashedIndex implements Index {
         //
         // REPLACE THE STATEMENT BELOW WITH YOUR CODE
         //
-        return null;
+        return index.get(token);
     }
 
 

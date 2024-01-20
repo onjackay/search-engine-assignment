@@ -28,5 +28,18 @@ public class PostingsList {
     // 
     //  YOUR CODE HERE
     //
+
+    /** Append with a docID */
+    public void insertDocID(int docID) {
+        for (PostingsEntry entry: list) {
+            if (entry.docID == docID) {
+                return;
+            }
+        }
+
+        PostingsEntry entry = new PostingsEntry();
+        entry.docID = docID;
+        list.add(entry);
+    }
 }
 
