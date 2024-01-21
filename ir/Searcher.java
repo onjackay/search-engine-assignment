@@ -37,13 +37,24 @@ public class Searcher {
         if (query.queryterm.isEmpty()) {
             return new PostingsList();
         }
-        else {
+        else if (queryType == QueryType.INTERSECTION_QUERY) {
             PostingsList resultList = index.getPostings(query.queryterm.getFirst().term);
             for (int i = 1; i < query.queryterm.size(); i++) {
                 QueryTerm queryterm = query.queryterm.get(i);
-                resultList = resultList.intersect(index.getPostings(queryterm.term));
+                resultList = resultList.intersectWith(index.getPostings(queryterm.term));
             }
             return resultList;
+        }
+        else if (queryType == QueryType.PHRASE_QUERY) {
+            PostingsList resultList = index.getPostings(query.queryterm.getFirst().term);
+            for (int i = 1; i < query.queryterm.size(); i++) {
+                QueryTerm queryterm = query.queryterm.get(i);
+                resultList = resultList.phraseWith(index.getPostings(queryterm.term), i);
+            }
+            return resultList;
+        }
+        else {
+            return new PostingsList();
         }
     }
 }

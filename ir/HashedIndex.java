@@ -34,10 +34,10 @@ public class HashedIndex implements Index {
             postingList = new PostingsList();
             index.put(token, postingList);
 
-            postingList.insertDocID(docID);
+            postingList.insert(docID, offset);
         }
         else {
-            postingList.insertDocID(docID);
+            postingList.insert(docID, offset);
         }
     }
 
