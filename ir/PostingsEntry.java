@@ -33,6 +33,7 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //
     // YOUR CODE HERE
     //
+    
     /* Positions in the doc */
     public ArrayList<Integer> position = new ArrayList<Integer>();
 

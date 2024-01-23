@@ -33,12 +33,8 @@ public class HashedIndex implements Index {
         if (postingList == null) {
             postingList = new PostingsList();
             index.put(token, postingList);
-
-            postingList.insert(docID, offset);
         }
-        else {
-            postingList.insert(docID, offset);
-        }
+        postingList.insert(docID, offset);
     }
 
 

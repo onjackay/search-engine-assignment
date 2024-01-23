@@ -29,15 +29,6 @@ public class PostingsList {
     //  YOUR CODE HERE
     //
 
-    /** Append with a docID */
-    // public void insertDocID(int docID) {
-    //     if (!list.isEmpty() && list.getLast().docID == docID) {
-    //         return;
-    //     }
-    //     PostingsEntry entry = new PostingsEntry(docID);
-    //     list.add(entry);
-    // }
-
     /** Append with a docID and the position */
     public void insert(int docID, int pos) {
         if (!list.isEmpty() && list.getLast().docID == docID) {
@@ -59,7 +50,6 @@ public class PostingsList {
                 j++;
             }
             if (list.get(i).docID == other.list.get(j).docID) {
-                // result.insertDocID(list.get(i).docID);
                 result.list.add(list.get(i));
             }
         }
@@ -94,6 +84,22 @@ public class PostingsList {
         }
 
         return result;
+    }
+
+    /** Return a string representation of the posting list */
+    public String toString() {
+        StringBuffer str = new StringBuffer();
+        for (PostingsEntry e: list) {
+            str.append(e.docID);
+            str.append(':');
+
+            for (int pos: e.position) {
+                str.append(pos);
+                str.append(',');
+            }
+            str.append(';');
+        }
+        return str.toString();
     }
 }
 

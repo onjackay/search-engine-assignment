@@ -55,6 +55,39 @@ public class PersistentHashedIndex implements Index {
     /** The cache as a main-memory hash map. */
     HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
 
+    /** size of an entry in the dictionary file */
+    public static final int DICT_ENTRY_SIZE = 12;
+    /** size of an entry in a posting list in the data file */
+    // public static final int DATA_ENTRY_SIZE = 8;
+
+    String[] hashStrings = new String[(int) TABLESIZE];
+
+    public int newHashKey(String token) {
+        int hash_val = (int) ((token.hashCode() % TABLESIZE + TABLESIZE) % TABLESIZE);
+        while (hashStrings[hash_val] != null) {
+            hash_val = (int) ((hash_val + 1) % TABLESIZE);
+        }
+        hashStrings[hash_val] = token;
+        return hash_val;
+    }
+
+    public int getHashKey(String token) {
+        int hash_val = (int) ((token.hashCode() % TABLESIZE + TABLESIZE) % TABLESIZE);
+        while (hashStrings[hash_val] != token) {
+            hash_val = (int) ((hash_val + 1) % TABLESIZE);
+        }
+        return hash_val;
+    }
+
+    public int getCollisions(String token) {
+        int hash_val = (int) ((token.hashCode() % TABLESIZE + TABLESIZE) % TABLESIZE);
+        int result = 0;
+        while (hashStrings[hash_val] != token && result < TABLESIZE) {
+            hash_val = (int) ((hash_val + 1) % TABLESIZE);
+            result++;
+        }
+        return result;
+    }
 
     // ===================================================================
 
@@ -65,8 +98,54 @@ public class PersistentHashedIndex implements Index {
         //
         //  YOUR CODE HERE
         //
+        /** The starting position in data file */
+        long pos;
+        /** The size of posting list (in byte) */
+        int size;
+
+        public Entry(long pos, int size) {
+            this.pos = pos;
+            this.size = size;
+        }
     }
 
+    HashMap<Integer, Entry> entryMap = new HashMap<Integer, Entry>();
+
+    public static byte[] longToBytes(long l) {
+        byte[] result = new byte[8];
+        for (int i = 7; i >= 0; i--) {
+            result[i] = (byte)(l & 0xFF);
+            l >>= 8;
+        }
+        return result;
+    }
+    
+    public static long bytesToLong(final byte[] b) {
+        long result = 0;
+        for (int i = 0; i < 8; i++) {
+            result <<= 8;
+            result |= (b[i] & 0xFF);
+        }
+        return result;
+    }
+
+    public static byte[] intToBytes(int l) {
+        byte[] result = new byte[4];
+        for (int i = 3; i >= 0; i--) {
+            result[i] = (byte)(l & 0xFF);
+            l >>= 8;
+        }
+        return result;
+    }
+    
+    public static int bytesToInt(final byte[] b) {
+        int result = 0;
+        for (int i = 0; i < 4; i++) {
+            result <<= 8;
+            result |= (b[i] & 0xFF);
+        }
+        return result;
+    }
 
     // ==================================================================
 
@@ -114,11 +193,28 @@ public class PersistentHashedIndex implements Index {
      */ 
     String readData( long ptr, int size ) {
         try {
-            dataFile.seek( ptr );
-            byte[] data = new byte[size];
+            String token = readToken(ptr);
+            byte[] data = new byte[size - token.length() - 1];
             dataFile.readFully( data );
             return new String(data);
         } catch ( IOException e ) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /** Reads only the token from the data file */
+    String readToken(long ptr) {
+        try {
+            StringBuffer str = new StringBuffer();
+            dataFile.seek(ptr);
+            char ch = (char) dataFile.readByte();
+            while (ch != ' ') {
+                str.append(ch);
+                ch = (char) dataFile.readByte();
+            }
+            return str.toString();
+        } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
@@ -139,6 +235,15 @@ public class PersistentHashedIndex implements Index {
         //
         //  YOUR CODE HERE
         //
+        try {
+            dictionaryFile.seek(ptr);
+            byte[] pos_byte = longToBytes(entry.pos);
+            byte[] size_byte = intToBytes(entry.size);
+            dictionaryFile.write(pos_byte);
+            dictionaryFile.write(size_byte);
+        } catch ( IOException e ) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -150,7 +255,17 @@ public class PersistentHashedIndex implements Index {
         //
         //  REPLACE THE STATEMENT BELOW WITH YOUR CODE 
         //
-        return null;
+        try {
+            dictionaryFile.seek( ptr );
+            byte[] pos_byte = new byte[8];
+            byte[] size_byte = new byte[4];
+            dictionaryFile.readFully( pos_byte );
+            dictionaryFile.readFully( size_byte );
+            return new Entry(bytesToLong(pos_byte), bytesToInt(size_byte));
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 
@@ -201,10 +316,21 @@ public class PersistentHashedIndex implements Index {
         try {
             // Write the 'docNames' and 'docLengths' hash maps to a file
             writeDocInfo();
+            for (Map.Entry<String, PostingsList> e: index.entrySet()) {
+                String token = e.getKey();
+                PostingsList postingsList = e.getValue();
 
-            // Write the dictionary and the postings list
+                int hash_val = newHashKey(token);
+                collisions += getCollisions(token);
 
-            // 
+                String str = token + ' ' + postingsList.toString();
+                
+                writeEntry(new Entry(free, str.length()), hash_val * DICT_ENTRY_SIZE);
+                writeData(str, free);
+
+                free += str.length();
+            }
+
             //  YOUR CODE HERE
             //
         } catch ( IOException e ) {
@@ -225,7 +351,37 @@ public class PersistentHashedIndex implements Index {
         //
         //  REPLACE THE STATEMENT BELOW WITH YOUR CODE
         //
-        return null;
+        PostingsList postingsList = new PostingsList();
+
+        try {
+            int hash_val = (int) ((token.hashCode() % TABLESIZE + TABLESIZE) % TABLESIZE);
+            Entry entry;
+            
+            while (true) {
+                entry = readEntry(hash_val * DICT_ENTRY_SIZE);
+                if (readToken(entry.pos).equals(token)) {
+                    break;
+                }
+                hash_val++;
+            }
+            String str = readData(entry.pos, entry.size);
+
+            String[] docs = str.split(";");
+            for (String str_doc: docs) {
+                int index = str_doc.indexOf(':');
+                int docID = Integer.parseInt(str_doc.substring(0, index));
+                String[] positions = str_doc.substring(index + 1).split(",");
+
+                for (String str_pos: positions) {
+                    int pos = Integer.parseInt(str_pos);
+                    postingsList.insert(docID, pos);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return postingsList;
     }
 
 
@@ -236,6 +392,16 @@ public class PersistentHashedIndex implements Index {
         //
         //  YOUR CODE HERE
         //
+        PostingsList postingList = index.get(token);
+        
+        if (postingList == null) {
+            postingList = new PostingsList();
+            postingList.insert(docID, offset);
+            index.put(token, postingList);
+        }
+        else {
+            postingList.insert(docID, offset);
+        }
     }
 
 
