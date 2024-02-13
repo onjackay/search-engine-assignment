@@ -53,6 +53,45 @@ public class Searcher {
             }
             return resultList;
         }
+        else if (queryType == QueryType.RANKED_QUERY) {
+            int[] df = new int[query.queryterm.size()];
+            PostingsList[] postingsLists = new PostingsList[query.queryterm.size()];
+            PostingsList resultList = null;
+
+            for (int i = 0; i < query.queryterm.size(); i++) {
+                QueryTerm queryterm = query.queryterm.get(i);
+                postingsLists[i] = index.getPostings(queryterm.term);
+                df[i] = postingsLists[i].size();
+
+                if (i == 0) {
+                    resultList = postingsLists[i];
+                }
+                else {
+                    resultList = resultList.unionWith(postingsLists[i]);
+                }
+            }
+
+            for (int i = 0; i < query.queryterm.size(); i++) {
+                double idf = Math.log((double) Index.docNames.size() / df[i]);
+                double weight_query = 1; // 1 / idf;
+
+                for (int j = 0, k = 0; j < resultList.size(); j++) {
+                    while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < resultList.get(j).docID) {
+                        k++;
+                    }
+                    if (postingsLists[i].get(k).docID == resultList.get(j).docID) {
+                        int tf = postingsLists[i].get(k).positions.size();
+                        double weight = tf * idf / Index.docLengths.get(resultList.get(j).docID);
+    
+                        resultList.get(j).score += weight * weight_query;
+                    }
+                }
+            }
+            
+            resultList.sortByScore();
+            
+            return resultList;
+        }
         else {
             return new PostingsList();
         }

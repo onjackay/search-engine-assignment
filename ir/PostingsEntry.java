@@ -35,14 +35,14 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //
     
     /* Positions in the doc */
-    public ArrayList<Integer> position = new ArrayList<Integer>();
+    public ArrayList<Integer> positions = new ArrayList<Integer>();
 
     public PostingsEntry(int docID) {
         this.docID = docID;
     }
 
     public void addPosition(int pos) {
-        position.add(pos);
+        positions.add(pos);
     }
 }
 

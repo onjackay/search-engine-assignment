@@ -67,8 +67,8 @@ public class PostingsList {
             }
             if (list.get(i).docID == other.list.get(j).docID) {
                 PostingsEntry entry = new PostingsEntry(list.get(i).docID);
-                ArrayList<Integer> this_pos = list.get(i).position;
-                ArrayList<Integer> other_pos = other.list.get(j).position;
+                ArrayList<Integer> this_pos = list.get(i).positions;
+                ArrayList<Integer> other_pos = other.list.get(j).positions;
 
                 for (int i_ = 0, j_ = 0; i_ < this_pos.size(); i_++) {
                     while (j_ < other_pos.size() - 1 && other_pos.get(j_) < this_pos.get(i_) + offset) {
@@ -78,11 +78,32 @@ public class PostingsList {
                         entry.addPosition(this_pos.get(i_));
                     }
                 }
-                if (!entry.position.isEmpty())
+                if (!entry.positions.isEmpty())
                     result.list.add(entry);
             }
         }
 
+        return result;
+    }
+
+    /* Union with another PostingList */
+    public PostingsList unionWith(PostingsList other) {
+        PostingsList result = new PostingsList();
+        for (int i = 0, j = 0; i < list.size() && j < other.list.size();) {
+            if (list.get(i).docID < other.list.get(j).docID) {
+                result.list.add(list.get(i));
+                i++;
+            }
+            else if (list.get(i).docID > other.list.get(j).docID) {
+                result.list.add(other.list.get(j));
+                j++;
+            }
+            else {
+                result.list.add(list.get(i));
+                i++;
+                j++;
+            }
+        }
         return result;
     }
 
@@ -93,13 +114,18 @@ public class PostingsList {
             str.append(e.docID);
             str.append(':');
 
-            for (int pos: e.position) {
+            for (int pos: e.positions) {
                 str.append(pos);
                 str.append(',');
             }
             str.append(';');
         }
         return str.toString();
+    }
+
+    /** Sort the list by scores. Only used for ranked searching result. */
+    public void sortByScore() {
+        list.sort(null);
     }
 }
 
