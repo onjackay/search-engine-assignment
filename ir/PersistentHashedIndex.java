@@ -359,6 +359,9 @@ public class PersistentHashedIndex implements Index {
             
             while (true) {
                 entry = readEntry(hash_val * DICT_ENTRY_SIZE);
+                if (entry.size == 0) {
+                    return postingsList;
+                }
                 if (readToken(entry.pos).equals(token)) {
                     break;
                 }
