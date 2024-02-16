@@ -8,6 +8,10 @@
 package ir;
 
 import ir.Query.QueryTerm;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  *  Searches an index for results of a query.
@@ -19,11 +23,27 @@ public class Searcher {
 
     /** The k-gram index to be searched by this Searcher */
     KGramIndex kgIndex;
+
+    /** The pagerank scores */
+    HashMap<String, Double> pagerank = new HashMap<String, Double>();
     
     /** Constructor */
     public Searcher( Index index, KGramIndex kgIndex ) {
         this.index = index;
         this.kgIndex = kgIndex;
+
+        // Read pagerank from file
+        try (BufferedReader br = new BufferedReader(new FileReader("data/pagerank.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(";");
+                String fileName = parts[0];
+                double pr = Double.parseDouble(parts[1]);
+                pagerank.put(fileName, pr);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -54,15 +74,12 @@ public class Searcher {
             return resultList;
         }
         else if (queryType == QueryType.RANKED_QUERY) {
-            int[] df = new int[query.queryterm.size()];
             PostingsList[] postingsLists = new PostingsList[query.queryterm.size()];
             PostingsList resultList = null;
 
             for (int i = 0; i < query.queryterm.size(); i++) {
                 QueryTerm queryterm = query.queryterm.get(i);
                 postingsLists[i] = index.getPostings(queryterm.term);
-                df[i] = postingsLists[i].size();
-
                 if (i == 0) {
                     resultList = postingsLists[i];
                 }
@@ -71,29 +88,70 @@ public class Searcher {
                 }
             }
 
-            for (int i = 0; i < query.queryterm.size(); i++) {
-                double idf = Math.log((double) Index.docNames.size() / df[i]);
-                double weight_query = 1; // 1 / idf;
-
-                for (int j = 0, k = 0; j < resultList.size(); j++) {
-                    while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < resultList.get(j).docID) {
-                        k++;
-                    }
-                    if (postingsLists[i].get(k).docID == resultList.get(j).docID) {
-                        int tf = postingsLists[i].get(k).positions.size();
-                        double weight = tf * idf / Index.docLengths.get(resultList.get(j).docID);
-    
-                        resultList.get(j).score += weight * weight_query;
-                    }
+            if (rankingType == RankingType.TF_IDF) {
+                double[] tfidf = getTfidf(query, postingsLists, resultList);
+                for (int i = 0; i < resultList.size(); i++) {
+                    resultList.get(i).score = tfidf[i];
                 }
             }
-            
+            else if (rankingType == RankingType.PAGERANK) {
+                double[] pagerank = getPagerank(resultList);
+                for (int i = 0; i < resultList.size(); i++) {
+                    resultList.get(i).score = pagerank[i];
+                }
+            }
+            else if (rankingType == RankingType.COMBINATION) {
+                double[] tfidf = getTfidf(query, postingsLists, resultList);
+                double[] pagerank = getPagerank(resultList);
+                for (int i = 0; i < resultList.size(); i++) {
+                    resultList.get(i).score = tfidf[i] + 1000 * pagerank[i];
+                }
+            }
+
             resultList.sortByScore();
-            
             return resultList;
         }
         else {
             return new PostingsList();
         }
+    }
+
+    private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList) {
+        double[] tfidf = new double[resultList.size()];
+        
+        for (int i = 0; i < query.queryterm.size(); i++) {
+            int df = postingsLists[i].size();
+            double idf = Math.log((double) Index.docNames.size() / df);
+            double weight_query = 1; // 1 / idf;
+
+            for (int j = 0, k = 0; j < resultList.size(); j++) {
+                while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < resultList.get(j).docID) {
+                    k++;
+                }
+                if (postingsLists[i].get(k).docID == resultList.get(j).docID) {
+                    int tf = postingsLists[i].get(k).positions.size();
+                    double weight = tf * idf / Index.docLengths.get(resultList.get(j).docID);
+
+                    tfidf[j] += weight * weight_query;
+                }
+            }
+        }
+        return tfidf;
+    }
+
+    private double[] getPagerank(PostingsList resultList) {
+        double[] pageranks = new double[resultList.size()];
+        for (int i = 0; i < resultList.size(); i++) {
+            String fileName = Index.docNames.get(resultList.get(i).docID);
+            int index = fileName.lastIndexOf("\\");
+            fileName = fileName.substring(index + 1);
+            if (pagerank.containsKey(fileName)) {
+                pageranks[i] = pagerank.get(fileName);
+            }
+            else {
+                pageranks[i] = 0;
+            }
+        }
+        return pageranks;
     }
 }
