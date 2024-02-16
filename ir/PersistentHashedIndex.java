@@ -26,7 +26,7 @@ import java.nio.charset.*;
 public class PersistentHashedIndex implements Index {
 
     /** The directory where the persistent index files are stored. */
-    public static final String INDEXDIR = "./index";
+    public static final String INDEXDIR = "../index";
 
     /** The dictionary file name */
     public static final String DICTIONARY_FNAME = "dictionary";
@@ -359,6 +359,9 @@ public class PersistentHashedIndex implements Index {
             
             while (true) {
                 entry = readEntry(hash_val * DICT_ENTRY_SIZE);
+                if (entry.size == 0) {
+                    return postingsList;
+                }
                 if (readToken(entry.pos).equals(token)) {
                     break;
                 }
