@@ -31,5 +31,9 @@ public interface Index {
     /** This method is called on exit. */
     public void cleanup();
 
+    public HashMap<Integer, Double> docSqrEuclLengths = new HashMap<Integer, Double>();
+
+    public void init();
+
 }
 

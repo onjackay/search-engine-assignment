@@ -10,6 +10,8 @@ package ir;
 import java.io.*;
 import java.util.*;
 import java.nio.charset.*;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 
 
 /*
@@ -415,6 +417,58 @@ public class PersistentHashedIndex implements Index {
         System.err.println( index.keySet().size() + " unique words" );
         System.err.print( "Writing index to disk..." );
         writeIndex();
+        writeEuclideanLengths();
         System.err.println( "done!" );
+    }
+
+    public void init() {
+        readEuclideanLengths();
+    }
+
+    /**
+     * Write the euclidean lengths of the documents to file.
+     */
+    private void writeEuclideanLengths() {
+        for (PostingsList list: index.values()) {
+            double idf = Math.log10((double) docNames.size() / list.size());
+            for (int i = 0; i < list.size(); i++) {
+                PostingsEntry entry = list.get(i);
+                if (docSqrEuclLengths.containsKey(entry.docID)) {
+                    docSqrEuclLengths.put(entry.docID, docSqrEuclLengths.get(entry.docID) + Math.pow(entry.positions.size() * idf, 2));
+                }
+                else {
+                    docSqrEuclLengths.put(entry.docID, Math.pow(entry.positions.size() * idf, 2));
+                }
+            }
+        }
+        try {
+            BufferedWriter writer = new BufferedWriter(new FileWriter("data/euclLen"));
+            NumberFormat formatter = new DecimalFormat("#0.000000");
+            for (Map.Entry<Integer, Double> entry: docSqrEuclLengths.entrySet()) {
+                writer.write(entry.getKey() + ";" + formatter.format(entry.getValue()) + "\n");
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Read the euclidean lengths of the documents from file.
+     */
+    private void readEuclideanLengths() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("data/euclLen"));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(";");
+                int docId = Integer.parseInt(parts[0]);
+                double euclLen = Double.parseDouble(parts[1]);
+                docSqrEuclLengths.put(docId, euclLen);
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

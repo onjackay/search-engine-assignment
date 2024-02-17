@@ -90,6 +90,9 @@ public class Engine {
                 index.cleanup();
             }
         } else {
+            synchronized ( indexLock ) {
+                index.init();
+            }
             gui.displayInfoText( "Index is loaded from disk" );
         }
     }

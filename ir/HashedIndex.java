@@ -55,4 +55,7 @@ public class HashedIndex implements Index {
      */
     public void cleanup() {
     }
+
+    public void init() {
+    }
 }

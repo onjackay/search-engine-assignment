@@ -89,7 +89,7 @@ public class Searcher {
             }
 
             if (rankingType == RankingType.TF_IDF) {
-                double[] tfidf = getTfidf(query, postingsLists, resultList);
+                double[] tfidf = getTfidf(query, postingsLists, resultList, normType);
                 for (int i = 0; i < resultList.size(); i++) {
                     resultList.get(i).score = tfidf[i];
                 }
@@ -101,7 +101,7 @@ public class Searcher {
                 }
             }
             else if (rankingType == RankingType.COMBINATION) {
-                double[] tfidf = getTfidf(query, postingsLists, resultList);
+                double[] tfidf = getTfidf(query, postingsLists, resultList, normType);
                 double[] pagerank = getPagerank(resultList);
                 for (int i = 0; i < resultList.size(); i++) {
                     resultList.get(i).score = tfidf[i] + 1000 * pagerank[i];
@@ -116,23 +116,30 @@ public class Searcher {
         }
     }
 
-    private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList) {
+    private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList, NormalizationType normType) {
         double[] tfidf = new double[resultList.size()];
         
         for (int i = 0; i < query.queryterm.size(); i++) {
             int df = postingsLists[i].size();
             double idf = Math.log((double) Index.docNames.size() / df);
-            double weight_query = 1; // 1 / idf;
+            double weight_queryterm = 1; // 1 / idf;
 
             for (int j = 0, k = 0; j < resultList.size(); j++) {
-                while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < resultList.get(j).docID) {
+                int currDocId = resultList.get(j).docID;
+                while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < currDocId) {
                     k++;
                 }
-                if (postingsLists[i].get(k).docID == resultList.get(j).docID) {
+                if (postingsLists[i].get(k).docID == currDocId) {
                     int tf = postingsLists[i].get(k).positions.size();
-                    double weight = tf * idf / Index.docLengths.get(resultList.get(j).docID);
+                    double weight;
+                    if (normType == NormalizationType.NUMBER_OF_WORDS) {
+                        weight = tf * idf / Index.docLengths.get(currDocId);
+                    }
+                    else {
+                        weight = tf * idf / Math.sqrt(Index.docSqrEuclLengths.get(currDocId));
+                    }
 
-                    tfidf[j] += weight * weight_query;
+                    tfidf[j] += weight * weight_queryterm;
                 }
             }
         }
