@@ -221,7 +221,6 @@ public class HITSRanker {
         }
 
         for (int step = 0; step < MAX_NUMBER_OF_STEPS; step++) {
-            System.err.println("Step " + step + "...");
             HashMap<Integer, Double> newHubs = new HashMap<Integer,Double>();
             HashMap<Integer, Double> newAuthorities = new HashMap<Integer,Double>();
             for (int id: baseSet) {
@@ -229,12 +228,16 @@ public class HITSRanker {
                 double authority = 0;
                 if (linksFrom.containsKey(id)) {
                     for (int from: linksFrom.get(id)) {
-                        authority += hubs.get(from);
+                        if (authorities.containsKey(from)) {
+                            authority += hubs.get(from);
+                        }
                     }
                 }
                 if (linksTo.containsKey(id)) {
                     for (int to: linksTo.get(id)) {
-                        hub += authorities.get(to);
+                        if (hubs.containsKey(to)) {
+                            hub += authorities.get(to);
+                        }
                     }
                 }
                 newHubs.put(id, hub);
@@ -283,17 +286,14 @@ public class HITSRanker {
         int n = post.size();
         String[] titles = new String[n];
         for (int i = 0; i < n; i++) {
-            titles[i] = Index.docNames.get(post.get(i).docID);
+            titles[i] = getFileName(Index.docNames.get(post.get(i).docID));
         }
         iterate(titles);
-        HashMap<Integer,Double> scores = new HashMap<Integer,Double>();
-        for (int i = 0; i < n; i++) {
-            scores.put(post.get(i).docID, hubs.get(titleToId.get(titles[i])) + authorities.get(titleToId.get(titles[i])));
-        }
-        HashMap<Integer,Double> sortedScores = sortHashMapByValue(scores);
         PostingsList result = new PostingsList();
-        for (Map.Entry<Integer,Double> e: sortedScores.entrySet()) {
-            result.insert(e.getKey(), 0, e.getValue());
+        for (int i = 0; i < n; i++) {
+            PostingsEntry entry = post.get(i);
+            int id = titleToId.get(getFileName(Index.docNames.get(entry.docID)));
+            result.insert(entry.docID, 0, hubs.get(id) + authorities.get(id));
         }
         return result;
     }

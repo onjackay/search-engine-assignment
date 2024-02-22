@@ -26,11 +26,15 @@ public class Searcher {
 
     /** The pagerank scores */
     HashMap<String, Double> pagerank = new HashMap<String, Double>();
+
+    /** The HITS ranker */
+    HITSRanker hitsRanker;
     
     /** Constructor */
     public Searcher( Index index, KGramIndex kgIndex ) {
         this.index = index;
         this.kgIndex = kgIndex;
+        this.hitsRanker = new HITSRanker("data/linksDavis.txt", "data/davisTitles.txt", index);
 
         // Read pagerank from file
         try (BufferedReader br = new BufferedReader(new FileReader("data/pagerank.txt"))) {
@@ -107,6 +111,12 @@ public class Searcher {
                     resultList.get(i).score = tfidf[i] + 1000 * pagerank[i];
                 }
             }
+            else if (rankingType == RankingType.HITS) {
+                // TODO
+                System.err.println("HITS");
+                resultList = hitsRanker.rank(resultList);
+
+            }
 
             resultList.sortByScore();
             return resultList;
@@ -118,13 +128,11 @@ public class Searcher {
 
     private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList, NormalizationType normType) {
         double[] tfidf = new double[resultList.size()];
-        System.err.println("Get tfidf");
         
         for (int i = 0; i < query.queryterm.size(); i++) {
             int df = postingsLists[i].size();
             double idf = Math.log((double) Index.docNames.size() / df);
             double weight_queryterm = 1; // 1 / idf;
-            System.err.println("idf: " + idf);
 
             for (int j = 0, k = 0; j < resultList.size(); j++) {
                 int currDocId = resultList.get(j).docID;
