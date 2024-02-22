@@ -41,6 +41,19 @@ public class PostingsList {
         }
     }
 
+    public void insert(int docID, int pos, double score) {
+        if (!list.isEmpty() && list.getLast().docID == docID) {
+            list.getLast().addPosition(pos);
+            list.getLast().score = score;
+        }
+        else {
+            PostingsEntry entry = new PostingsEntry(docID);
+            entry.addPosition(pos);
+            entry.score = score;
+            list.add(entry);
+        }
+    }
+
     /* Intersect with another PostingList */
     public PostingsList intersectWith(PostingsList other) {
         PostingsList result = new PostingsList();

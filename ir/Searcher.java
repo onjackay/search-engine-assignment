@@ -118,11 +118,13 @@ public class Searcher {
 
     private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList, NormalizationType normType) {
         double[] tfidf = new double[resultList.size()];
+        System.err.println("Get tfidf");
         
         for (int i = 0; i < query.queryterm.size(); i++) {
             int df = postingsLists[i].size();
             double idf = Math.log((double) Index.docNames.size() / df);
             double weight_queryterm = 1; // 1 / idf;
+            System.err.println("idf: " + idf);
 
             for (int j = 0, k = 0; j < resultList.size(); j++) {
                 int currDocId = resultList.get(j).docID;

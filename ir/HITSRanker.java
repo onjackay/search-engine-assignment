@@ -44,6 +44,23 @@ public class HITSRanker {
      */
     HashMap<Integer,Double> authorities;
 
+    /**
+     *  Edges of the graph
+     */
+    HashMap<Integer, ArrayList<Integer>> linksTo = new HashMap<Integer, ArrayList<Integer>>();
+    HashMap<Integer, ArrayList<Integer>> linksFrom = new HashMap<Integer, ArrayList<Integer>>();
+
+    /**
+     *  The set of documents that we base our ranking on
+     */
+    Set<Integer> baseSet;
+
+    /**  
+     *   Maximal number of documents. We're assuming here that we
+     *   don't have more docs than we can keep in main memory.
+     */
+    final static int MAX_NUMBER_OF_DOCS = 2000000;
+
     
     /* --------------------------------------------- */
 
@@ -105,6 +122,67 @@ public class HITSRanker {
         //
         // YOUR CODE HERE
         //
+        int fileIndex = 0;
+        
+        try {
+            System.err.println("Reading title file... ");
+            BufferedReader in = new BufferedReader(new FileReader(titlesFilename));
+            String line;
+            while ((line = in.readLine()) != null) {
+                String[] s = line.split(";");
+                int id = Integer.parseInt(s[0]);
+                titleToId.put(s[1], id);
+            }
+            System.err.println("Read " + titleToId.size() + " number of titles");
+            in.close();
+        }
+        catch (FileNotFoundException e) {
+            System.err.println("File " + titlesFilename + " not found!");
+        }
+        catch (IOException e) {
+            System.err.println("Error reading file " + titlesFilename);
+        }
+
+        try {
+            System.err.print( "Reading link file... " );
+            BufferedReader in = new BufferedReader( new FileReader( linksFilename ));
+            String line;
+            while ((line = in.readLine()) != null && fileIndex<MAX_NUMBER_OF_DOCS ) {
+                int index = line.indexOf( ";" );
+                int fromId = Integer.parseInt(line.substring( 0, index ));
+                if (index == line.length() - 1) {
+                    continue;
+                }
+                String[] tos = line.substring( index+1, line.length() ).split(",");
+                for (String to: tos) {
+                    int toId = Integer.parseInt(to);
+                    if (!linksTo.containsKey(fromId)) {
+                        linksTo.put(fromId, new ArrayList<Integer>());
+                    }
+                    linksTo.get(fromId).add(toId);
+
+                    if (!linksFrom.containsKey(toId)) {
+                        linksFrom.put(toId, new ArrayList<Integer>());
+                    }
+                    linksFrom.get(toId).add(fromId);
+                }
+            }
+            if ( fileIndex >= MAX_NUMBER_OF_DOCS ) {
+                System.err.print( "stopped reading since documents table is full. " );
+            }
+            else {
+                System.err.print( "done. " );
+            }
+            in.close();
+        }
+        catch ( FileNotFoundException e ) {
+            System.err.println( "File " + linksFilename + " not found!" );
+        }
+        catch ( IOException e ) {
+            System.err.println( "Error reading file " + linksFilename );
+        }
+        System.err.println( "Read " + fileIndex + " number of documents" );
+
     }
 
     /**
@@ -116,6 +194,77 @@ public class HITSRanker {
         //
         // YOUR CODE HERE
         //
+        hubs = new HashMap<Integer,Double>();
+        authorities = new HashMap<Integer,Double>();
+
+        Set<Integer> baseSet = new HashSet<Integer>();
+        for (String title: titles) {
+            Integer id = titleToId.get(title);
+            if (id != null) {
+                baseSet.add(id);
+                if (linksTo.containsKey(id)) {
+                    for (int to: linksTo.get(id)) {
+                        baseSet.add(to);
+                    }
+                }
+                if (linksFrom.containsKey(id)) {
+                    for (int from: linksFrom.get(id)) {
+                        baseSet.add(from);
+                    }
+                }
+            }
+        }
+
+        for (int id: baseSet) {
+            hubs.put(id, 1.0);
+            authorities.put(id, 1.0);
+        }
+
+        for (int step = 0; step < MAX_NUMBER_OF_STEPS; step++) {
+            System.err.println("Step " + step + "...");
+            HashMap<Integer, Double> newHubs = new HashMap<Integer,Double>();
+            HashMap<Integer, Double> newAuthorities = new HashMap<Integer,Double>();
+            for (int id: baseSet) {
+                double hub = 0;
+                double authority = 0;
+                if (linksFrom.containsKey(id)) {
+                    for (int from: linksFrom.get(id)) {
+                        authority += hubs.get(from);
+                    }
+                }
+                if (linksTo.containsKey(id)) {
+                    for (int to: linksTo.get(id)) {
+                        hub += authorities.get(to);
+                    }
+                }
+                newHubs.put(id, hub);
+                newAuthorities.put(id, authority);
+            }
+
+            double hubSum = 0;
+            double authoritySum = 0;
+            for (int id: baseSet) {
+                hubSum += newHubs.get(id) * newHubs.get(id);
+                authoritySum += newAuthorities.get(id) * newAuthorities.get(id);
+            }
+            hubSum = Math.sqrt(hubSum);
+            authoritySum = Math.sqrt(authoritySum);
+
+            double hubsDiff = 0;
+            double authoritiesDiff = 0;
+            for (int id: baseSet) {
+                double hub = newHubs.get(id) / hubSum;
+                double authority = newAuthorities.get(id) / authoritySum;
+                hubsDiff += Math.abs(hubs.get(id) - hub);
+                authoritiesDiff += Math.abs(authorities.get(id) - authority);
+                hubs.put(id, hub);
+                authorities.put(id, authority);
+            }
+
+            if (hubsDiff < EPSILON && authoritiesDiff < EPSILON) {
+                break;
+            }
+        }
     }
 
 
@@ -131,7 +280,22 @@ public class HITSRanker {
         //
         // YOUR CODE HERE
         //
-        return null;
+        int n = post.size();
+        String[] titles = new String[n];
+        for (int i = 0; i < n; i++) {
+            titles[i] = Index.docNames.get(post.get(i).docID);
+        }
+        iterate(titles);
+        HashMap<Integer,Double> scores = new HashMap<Integer,Double>();
+        for (int i = 0; i < n; i++) {
+            scores.put(post.get(i).docID, hubs.get(titleToId.get(titles[i])) + authorities.get(titleToId.get(titles[i])));
+        }
+        HashMap<Integer,Double> sortedScores = sortHashMapByValue(scores);
+        PostingsList result = new PostingsList();
+        for (Map.Entry<Integer,Double> e: sortedScores.entrySet()) {
+            result.insert(e.getKey(), 0, e.getValue());
+        }
+        return result;
     }
 
 
