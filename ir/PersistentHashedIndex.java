@@ -445,7 +445,7 @@ public class PersistentHashedIndex implements Index {
             BufferedWriter writer = new BufferedWriter(new FileWriter("data/euclLen"));
             NumberFormat formatter = new DecimalFormat("#0.000000");
             for (Map.Entry<Integer, Double> entry: docSqrEuclLengths.entrySet()) {
-                writer.write(entry.getKey() + ";" + formatter.format(entry.getValue()) + "\n");
+                writer.write(entry.getKey() + ";" + formatter.format(Math.pow(entry.getValue(), 0.5)) + "\n");
             }
             writer.close();
         } catch (IOException e) {

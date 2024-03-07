@@ -122,8 +122,6 @@ public class HITSRanker {
         //
         // YOUR CODE HERE
         //
-        int fileIndex = 0;
-        
         try {
             System.err.println("Reading title file... ");
             BufferedReader in = new BufferedReader(new FileReader(titlesFilename));
@@ -147,7 +145,7 @@ public class HITSRanker {
             System.err.print( "Reading link file... " );
             BufferedReader in = new BufferedReader( new FileReader( linksFilename ));
             String line;
-            while ((line = in.readLine()) != null && fileIndex<MAX_NUMBER_OF_DOCS ) {
+            while ((line = in.readLine()) != null) {
                 int index = line.indexOf( ";" );
                 int fromId = Integer.parseInt(line.substring( 0, index ));
                 if (index == line.length() - 1) {
@@ -167,12 +165,8 @@ public class HITSRanker {
                     linksFrom.get(toId).add(fromId);
                 }
             }
-            if ( fileIndex >= MAX_NUMBER_OF_DOCS ) {
-                System.err.print( "stopped reading since documents table is full. " );
-            }
-            else {
-                System.err.print( "done. " );
-            }
+            System.err.print( "done. " );
+            
             in.close();
         }
         catch ( FileNotFoundException e ) {
@@ -181,7 +175,7 @@ public class HITSRanker {
         catch ( IOException e ) {
             System.err.println( "Error reading file " + linksFilename );
         }
-        System.err.println( "Read " + fileIndex + " number of documents" );
+        System.err.println( "Read " + titleToId.size() + " number of documents" );
 
     }
 
