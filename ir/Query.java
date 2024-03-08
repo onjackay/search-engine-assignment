@@ -8,8 +8,11 @@
 package ir;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.StringTokenizer;
 import java.util.Iterator;
+import java.util.Map;
 import java.nio.charset.*;
 import java.io.*;
 
@@ -114,6 +117,51 @@ public class Query {
         //
         //  YOUR CODE HERE
         //
+        int cntRelevant = 0;
+        for (int i = 0; i < docIsRelevant.length; i++) {
+            if (docIsRelevant[i]) {
+                cntRelevant++;
+            }
+        }
+        if (cntRelevant == 0) {
+            return;
+        }
+        HashMap<String, Double> termWeights = new HashMap<String, Double>();
+        // Extract current query terms and multiply weights with alpha
+        for (QueryTerm term : queryterm) {
+            if (termWeights.containsKey(term.term)) {
+                termWeights.put(term.term, termWeights.get(term.term) + term.weight * alpha);
+            } else {
+                termWeights.put(term.term, term.weight * alpha);
+            }
+        }
+
+        try {
+            for (int i = 0; i < docIsRelevant.length; i++) {
+                if (!docIsRelevant[i]) continue;
+                String docPath = Index.docNames.get(results.get(i).docID);
+                Reader reader = new InputStreamReader(new FileInputStream(docPath), StandardCharsets.UTF_8);
+                Tokenizer tok = new Tokenizer(reader, true, false, true, engine.patterns_file);
+                while (tok.hasMoreTokens()) {
+                    String token = tok.nextToken();
+                    // Term frequency only
+                    if (termWeights.containsKey(token)) {
+                        termWeights.put(token, termWeights.get(token) + beta / cntRelevant);
+                    } else {
+                        termWeights.put(token, beta / cntRelevant);
+                    }
+                }
+            }
+        }
+        catch ( IOException e ) {
+            e.printStackTrace();
+        }
+
+        // Update query terms
+        queryterm.clear();
+        for (Map.Entry<String, Double> entry : termWeights.entrySet()) {
+            queryterm.add(new QueryTerm(entry.getKey(), entry.getValue()));
+        }
     }
 }
 

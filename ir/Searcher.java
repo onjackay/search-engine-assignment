@@ -112,10 +112,7 @@ public class Searcher {
                 }
             }
             else if (rankingType == RankingType.HITS) {
-                // TODO
-                System.err.println("HITS");
                 resultList = hitsRanker.rank(resultList);
-
             }
 
             resultList.sortByScore();
@@ -132,7 +129,7 @@ public class Searcher {
         for (int i = 0; i < query.queryterm.size(); i++) {
             int df = postingsLists[i].size();
             double idf = Math.log((double) Index.docNames.size() / df);
-            double weight_queryterm = 1; // 1 / idf;
+            double weight_queryterm = query.queryterm.get(i).weight;
 
             for (int j = 0, k = 0; j < resultList.size(); j++) {
                 int currDocId = resultList.get(j).docID;

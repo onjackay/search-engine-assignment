@@ -102,7 +102,8 @@ public class PostingsList {
     /* Union with another PostingList */
     public PostingsList unionWith(PostingsList other) {
         PostingsList result = new PostingsList();
-        for (int i = 0, j = 0; i < list.size() && j < other.list.size();) {
+        int i = 0, j = 0;
+        while (i < list.size() && j < other.list.size()) {
             if (list.get(i).docID < other.list.get(j).docID) {
                 result.list.add(list.get(i));
                 i++;
@@ -116,6 +117,14 @@ public class PostingsList {
                 i++;
                 j++;
             }
+        }
+        while (i < list.size()) {
+            result.list.add(list.get(i));
+            i++;
+        }
+        while (j < other.list.size()) {
+            result.list.add(other.list.get(j));
+            j++;
         }
         return result;
     }
