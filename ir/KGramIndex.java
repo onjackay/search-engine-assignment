@@ -54,7 +54,30 @@ public class KGramIndex {
         // 
         // YOUR CODE HERE
         //
-        return null;
+        if (p1 == null) {
+            return p2;
+        }
+        if (p2 == null) {
+            return p1;
+        }
+        List<KGramPostingsEntry> result = new ArrayList<KGramPostingsEntry>();
+        int i = 0, j = 0;
+        while (i < p1.size() && j < p2.size()) {
+            KGramPostingsEntry e1 = p1.get(i);
+            KGramPostingsEntry e2 = p2.get(j);
+            if (e1.tokenID < e2.tokenID) {
+                i++;
+            }
+            else if (e1.tokenID > e2.tokenID) {
+                j++;
+            }
+            else {
+                result.add(e1);
+                i++;
+                j++;
+            }
+        }
+        return result;
     }
 
 
@@ -63,6 +86,26 @@ public class KGramIndex {
         //
         // YOUR CODE HERE
         //
+        if (term2id.containsKey(token)) {
+            return;
+        }
+        Integer id = generateTermID();
+        term2id.put(token, id);
+        id2term.put(id, token);
+
+        token = "$" + token + "$";
+        for (int i = 0; i < token.length() - K + 1; i++) {
+            String kgram = token.substring(i, i + K);
+            List<KGramPostingsEntry> postings = index.get(kgram);
+            if (postings == null) {
+                postings = new ArrayList<KGramPostingsEntry>();
+                postings.add(new KGramPostingsEntry(id));
+                index.put(kgram, postings);
+            }
+            else if (postings.getLast().tokenID != id) {
+                postings.add(new KGramPostingsEntry(id));
+            }
+        }
     }
 
     /** Get postings for the given k-gram */
@@ -70,7 +113,7 @@ public class KGramIndex {
         //
         // YOUR CODE HERE
         //
-        return null;
+        return index.get(kgram);
     }
 
     /** Get id of a term */

@@ -11,6 +11,7 @@ import ir.Query.QueryTerm;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -116,6 +117,7 @@ public class Searcher {
             }
 
             resultList.sortByScore();
+            // getNDCG(resultList);
             return resultList;
         }
         else {
@@ -158,14 +160,52 @@ public class Searcher {
         for (int i = 0; i < resultList.size(); i++) {
             String fileName = Index.docNames.get(resultList.get(i).docID);
             int index = fileName.lastIndexOf("\\");
-            fileName = fileName.substring(index + 1);
-            if (pagerank.containsKey(fileName)) {
-                pageranks[i] = pagerank.get(fileName);
+            String tos = fileName.substring(index + 1);
+            if (pagerank.containsKey(tos)) {
+                pageranks[i] = pagerank.get(tos);
             }
             else {
                 pageranks[i] = 0;
             }
         }
         return pageranks;
+    }
+
+    private void getNDCG(PostingsList resultList) {
+        // Read relevance score
+        HashMap<String, Integer> relevance = new HashMap<String, Integer>();
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("data/average_relevance_filtered.txt"));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(" ");
+                relevance.put(parts[0], Integer.parseInt(parts[1]));
+            }
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // Calculate nDCG
+        int n = Math.min(resultList.size(), 50);
+        double dcg = 0, idcg = 0;
+        int[] rel = new int[n];
+        for (int i = 0; i < n; i++) {
+            String fileName = Index.docNames.get(resultList.get(i).docID);
+            int index = fileName.lastIndexOf("\\");
+            String tos = fileName.substring(index + 1);
+            if (relevance.containsKey(tos) && !tos.equals("Mathematics.f")) {
+                rel[i] = relevance.get(tos);
+                dcg += rel[i] / Math.log(i + 2);
+            }
+            else {
+                rel[i] = 0;
+            }
+        }
+        Arrays.sort(rel);
+        for (int i = 0; i < n; i++) {
+            idcg += rel[n - i - 1] / Math.log(i + 2);
+        }
+        System.err.println("DCG: " + dcg);
+        System.err.println("nDCG: " + dcg / idcg);
     }
 }
