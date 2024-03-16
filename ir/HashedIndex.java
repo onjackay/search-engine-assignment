@@ -58,4 +58,7 @@ public class HashedIndex implements Index {
 
     public void init() {
     }
+
+    public void initKGram(KGramIndex kgIndex) {
+    }
 }

@@ -10,7 +10,8 @@ package ir;
 import java.io.*;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class KGramIndex {
 
@@ -114,6 +115,32 @@ public class KGramIndex {
         // YOUR CODE HERE
         //
         return index.get(kgram);
+    }
+
+    public List<KGramPostingsEntry> getWildCardPostings(String term) {
+        String augmentedTerm = "$" + term + "$";
+        int asteriskIndex = augmentedTerm.indexOf("*");
+        if (asteriskIndex == -1) {
+            throw new IllegalArgumentException("The term does not contain an asterisk");
+        }
+        List<KGramPostingsEntry> resultList = null;
+        for (int i = 0; i < asteriskIndex - K + 1; i++) {
+            String subTerm = augmentedTerm.substring(i, i + K);
+            resultList = intersect(resultList, getPostings(subTerm));
+        }
+        for (int i = asteriskIndex + 1; i < augmentedTerm.length() - K + 1; i++) {
+            String subTerm = augmentedTerm.substring(i, i + K);
+            resultList = intersect(resultList, getPostings(subTerm));
+        }
+        Pattern pattern = Pattern.compile("^" + term.replace("*", ".*") + "$");
+        List<KGramPostingsEntry> filteredResultList = new ArrayList<KGramPostingsEntry>();
+        for (KGramPostingsEntry entry : resultList) {
+            Matcher matcher = pattern.matcher(id2term.get(entry.tokenID));
+            if (matcher.matches()) {
+                filteredResultList.add(entry);
+            }
+        }
+        return filteredResultList;
     }
 
     /** Get id of a term */

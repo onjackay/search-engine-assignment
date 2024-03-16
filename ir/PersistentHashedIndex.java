@@ -471,4 +471,10 @@ public class PersistentHashedIndex implements Index {
             e.printStackTrace();
         }
     }
+
+    public void initKGram(KGramIndex kgIndex) {
+        for (String token: index.keySet()) {
+            kgIndex.insert(token);
+        }
+    }
 }

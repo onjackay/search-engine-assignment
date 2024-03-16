@@ -33,7 +33,10 @@ public interface Index {
 
     public HashMap<Integer, Double> docSqrEuclLengths = new HashMap<Integer, Double>();
 
+    /** Initialization for non-indexing */
     public void init();
 
+    /** Initialization for KGram-index */
+    public void initKGram(KGramIndex kgIndex);
 }
 

@@ -101,6 +101,12 @@ public class PostingsList {
 
     /* Union with another PostingList */
     public PostingsList unionWith(PostingsList other) {
+        if (list.isEmpty()) {
+            return other;
+        }
+        if (other.list.isEmpty()) {
+            return this;
+        }
         PostingsList result = new PostingsList();
         int i = 0, j = 0;
         while (i < list.size() && j < other.list.size()) {
@@ -113,7 +119,15 @@ public class PostingsList {
                 j++;
             }
             else {
-                result.list.add(list.get(i));
+                PostingsEntry entry = new PostingsEntry(list.get(i).docID);
+                for (int pos: list.get(i).positions) {
+                    entry.addPosition(pos);
+                }
+                for (int pos: other.list.get(j).positions) {
+                    entry.addPosition(pos);
+                }
+                entry.positions.sort(null);
+                result.list.add(entry);
                 i++;
                 j++;
             }

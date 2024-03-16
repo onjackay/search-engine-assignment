@@ -13,6 +13,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  *  Searches an index for results of a query.
@@ -63,18 +64,18 @@ public class Searcher {
             return new PostingsList();
         }
         else if (queryType == QueryType.INTERSECTION_QUERY) {
-            PostingsList resultList = index.getPostings(query.queryterm.getFirst().term);
+            PostingsList resultList = getWildCardPostings(query.queryterm.getFirst().term);
             for (int i = 1; i < query.queryterm.size(); i++) {
                 QueryTerm queryterm = query.queryterm.get(i);
-                resultList = resultList.intersectWith(index.getPostings(queryterm.term));
+                resultList = resultList.intersectWith(getWildCardPostings(queryterm.term));
             }
             return resultList;
         }
         else if (queryType == QueryType.PHRASE_QUERY) {
-            PostingsList resultList = index.getPostings(query.queryterm.getFirst().term);
+            PostingsList resultList = getWildCardPostings(query.queryterm.getFirst().term);
             for (int i = 1; i < query.queryterm.size(); i++) {
                 QueryTerm queryterm = query.queryterm.get(i);
-                resultList = resultList.phraseWith(index.getPostings(queryterm.term), i);
+                resultList = resultList.phraseWith(getWildCardPostings(queryterm.term), i);
             }
             return resultList;
         }
@@ -84,7 +85,7 @@ public class Searcher {
 
             for (int i = 0; i < query.queryterm.size(); i++) {
                 QueryTerm queryterm = query.queryterm.get(i);
-                postingsLists[i] = index.getPostings(queryterm.term);
+                postingsLists[i] = getWildCardPostings(queryterm.term);
                 if (i == 0) {
                     resultList = postingsLists[i];
                 }
@@ -123,6 +124,24 @@ public class Searcher {
         else {
             return new PostingsList();
         }
+    }
+
+    private PostingsList getWildCardPostings(String term) {
+        if (term.indexOf('*') == -1) {
+            return index.getPostings(term);
+        }
+        List<KGramPostingsEntry> kgPostings = kgIndex.getWildCardPostings(term);
+        PostingsList resultList = null;
+        for (KGramPostingsEntry entry : kgPostings) {
+            String token = kgIndex.getTermByID(entry.tokenID);
+            if (resultList == null) {
+                resultList = index.getPostings(token);
+            }
+            else {
+                resultList = resultList.unionWith(index.getPostings(token));
+            }
+        }
+        return resultList;
     }
 
     private double[] getTfidf(Query query, PostingsList[] postingsLists, PostingsList resultList, NormalizationType normType) {
