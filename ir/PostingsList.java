@@ -56,6 +56,9 @@ public class PostingsList {
 
     /* Intersect with another PostingList */
     public PostingsList intersectWith(PostingsList other) {
+        if (list.isEmpty() || other.list.isEmpty()) {
+            return new PostingsList();
+        }
         PostingsList result = new PostingsList();
 
         for (int i = 0, j = 0; i < list.size(); i++) {
@@ -72,6 +75,9 @@ public class PostingsList {
 
     /* Form phrase with another PostingList */
     public PostingsList phraseWith(PostingsList other, int offset) {
+        if (list.isEmpty() || other.list.isEmpty()) {
+            return new PostingsList();
+        }
         PostingsList result = new PostingsList();
 
         for (int i = 0, j = 0; i < list.size(); i++) {

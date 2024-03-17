@@ -10,6 +10,7 @@ package ir;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ArrayList;
 
 
 public class SpellChecker {
@@ -86,6 +87,12 @@ public class SpellChecker {
         // YOUR CODE HERE
         //
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+        for (int i = 0; i <= s1.length(); i++) {
+            dp[i][0] = i;
+        }
+        for (int i = 0; i <= s2.length(); i++) {
+            dp[0][i] = i;
+        }
         for (int i = 0; i < s1.length(); i++) {
             for (int j = 0; j < s2.length(); j++) {
                 if (s1.charAt(i) == s2.charAt(j)) {
@@ -96,6 +103,27 @@ public class SpellChecker {
             }
         }
         return dp[s1.length()][s2.length()];
+    }
+
+    /**
+     * Get all candidates for spelling correction.
+     */
+    private String[] getCandidates(String term) {
+        HashSet<String> candidates = kgIndex.getKGramWords(term);
+        HashSet<String> kgrams = kgIndex.getKGrams(term);
+
+        candidates.removeIf(word -> {
+            String augmentedWord = "$" + word + "$";
+            int intersection = 0;
+            for (int i = 0; i < augmentedWord.length() - kgIndex.getK() + 1; i++) {
+                String kgram = augmentedWord.substring(i, i + kgIndex.getK());
+                if (kgrams.contains(kgram)) {
+                    intersection++;
+                }
+            }
+            return jaccard(kgrams.size(), augmentedWord.length() - kgIndex.getK() + 1, intersection) < JACCARD_THRESHOLD || editDistance(term, word) > MAX_EDIT_DISTANCE;
+        });
+        return candidates.toArray(new String[0]);
     }
 
     /**
@@ -110,24 +138,10 @@ public class SpellChecker {
         /** Single-term query */
         if (query.size() == 1) {
             String term = query.queryterm.get(0).term;
-            HashSet<String> candidates = kgIndex.getKGramWords(term);
-            HashSet<String> kgrams = kgIndex.getKGrams(term);
-
-            candidates.removeIf(word -> {
-                String augmentedWord = "$" + word + "$";
-                int intersection = 0;
-                for (int i = 0; i < augmentedWord.length() - kgIndex.getK() + 1; i++) {
-                    String kgram = augmentedWord.substring(i, i + kgIndex.getK());
-                    if (kgrams.contains(kgram)) {
-                        intersection++;
-                    }
-                }
-                return jaccard(kgrams.size(), augmentedWord.length() - kgIndex.getK() + 1, intersection) < JACCARD_THRESHOLD || editDistance(term, word) > MAX_EDIT_DISTANCE;
-            });
-            KGramStat[] stats = new KGramStat[candidates.size()];
-            int j = 0;
-            for (String candidate : candidates) {
-                stats[j++] = new KGramStat(candidate, index.getPostings(candidate).size());
+            String[] candidates = getCandidates(term);
+            KGramStat[] stats = new KGramStat[candidates.length];
+            for (int i = 0; i < candidates.length; i++) {
+                stats[i] = new KGramStat(candidates[i], index.getPostings(candidates[i]).size());
             }
             Arrays.sort(stats);
             String result[] = new String[Math.min(limit, stats.length)];
@@ -136,7 +150,30 @@ public class SpellChecker {
             }
             return result;
         }
-        return null;
+        else {
+            List<List<KGramStat>> qCorrections = new ArrayList<List<KGramStat>>(query.size());
+            for (int i = 0; i < query.size(); i++) {
+                String term = query.queryterm.get(i).term;
+                String[] candidates = getCandidates(term);
+                KGramStat[] stats = new KGramStat[candidates.length];
+                for (int j = 0; j < candidates.length; j++) {
+                    stats[j] = new KGramStat(candidates[j], Math.log(index.getPostings(candidates[j]).size()) - editDistance(term, candidates[j]));
+                }
+                Arrays.sort(stats);
+                List<KGramStat> list = new ArrayList<KGramStat>(Math.min(limit, stats.length));
+                for (int j = 0; j < Math.min(limit, stats.length); j++) {
+                    list.add(new KGramStat(stats[stats.length - j - 1].getToken(), editDistance(term, stats[stats.length - j - 1].getToken())));
+                }
+                qCorrections.add(list);
+            }
+            List<KGramStat> merged = mergeCorrections(qCorrections, limit);
+            merged.sort(null);
+            String[] result = new String[Math.min(limit, merged.size())];
+            for (int i = 0; i < Math.min(limit, merged.size()); i++) {
+                result[i] = merged.get(merged.size() - i - 1).getToken();
+            }
+            return result;
+        }
     }
 
     /**
@@ -148,6 +185,54 @@ public class SpellChecker {
         //
         // YOUR CODE HERE
         //
-        return null;
+        /** For intersection querytype */
+
+        class Candidate {
+            String term;
+            PostingsList postings;
+
+            Candidate(String term, PostingsList postings) {
+                this.term = term;
+                this.postings = postings;
+            }
+        }
+
+        List<Candidate> candidates = new ArrayList<Candidate>();
+        
+
+        
+        for (int i = 0; i < qCorrections.size(); i++) {
+            if (i == 0) {
+                for (int j = 0; j < qCorrections.get(0).size(); j++) {
+                    String term = qCorrections.get(0).get(j).getToken();
+                    candidates.add(new Candidate(term, index.getPostings(term)));
+                }
+            }
+            else {
+                List<Candidate> newCandidates = new ArrayList<Candidate>();
+                
+                for (int j = 0; j < candidates.size(); j++) {
+                    for (int k = 0; k < qCorrections.get(i).size(); k++) {
+                        String term = qCorrections.get(i).get(k).getToken();
+                        PostingsList postings = index.getPostings(term);
+                        if (postings == null) {
+                            continue;
+                        }
+                        newCandidates.add(new Candidate(candidates.get(j).term + " " + term, postings.intersectWith(candidates.get(j).postings)));
+                    }
+                }
+                
+                newCandidates.sort((a, b) -> {
+                    return b.postings.size() - a.postings.size();
+                });
+                candidates = newCandidates.subList(0, Math.min((qCorrections.size() - i) * limit, newCandidates.size()));
+            }
+        }
+        
+        List<KGramStat> merged = new ArrayList<KGramStat>();
+        for (int i = 0; i < candidates.size(); i++) {
+            merged.add(new KGramStat(candidates.get(i).term, candidates.get(i).postings.size()));
+        }
+        return merged;
     }
 }
