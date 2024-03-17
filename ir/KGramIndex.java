@@ -227,4 +227,29 @@ public class KGramIndex {
             }
         }
     }
+
+    /**
+     * Get all words that contain at least one k-gram from the given term
+     */
+    public HashSet<String> getKGramWords(String term) {
+        HashSet<String> words = new HashSet<String>();
+        term = "$" + term + "$";
+        for (int i = 0; i < term.length() - K + 1; i++) {
+            index.get(term.substring(i, i + K)).forEach(entry -> words.add(id2term.get(entry.tokenID)));
+        }
+        return words;
+    }
+
+    /**
+     * Get all k-grams for the given term
+     */
+    public HashSet<String> getKGrams(String term) {
+        HashSet<String> kgrams = new HashSet<String>();
+        term = "$" + term + "$";
+        for (int i = 0; i < term.length() - K + 1; i++) {
+            kgrams.add(term.substring(i, i + K));
+        }
+        return kgrams;
+    }
+
 }

@@ -148,26 +148,57 @@ public class Searcher {
         double[] tfidf = new double[resultList.size()];
         
         for (int i = 0; i < query.queryterm.size(); i++) {
-            int df = postingsLists[i].size();
-            double idf = Math.log((double) Index.docNames.size() / df);
+            String term = query.queryterm.get(i).term;
             double weight_queryterm = query.queryterm.get(i).weight;
+            if (term.indexOf("*") == -1) {
+                int df = postingsLists[i].size();
+                double idf = Math.log((double) Index.docNames.size() / df);
 
-            for (int j = 0, k = 0; j < resultList.size(); j++) {
-                int currDocId = resultList.get(j).docID;
-                while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < currDocId) {
-                    k++;
+                for (int j = 0, k = 0; j < resultList.size(); j++) {
+                    int currDocId = resultList.get(j).docID;
+                    while (k < postingsLists[i].size() - 1 && postingsLists[i].get(k).docID < currDocId) {
+                        k++;
+                    }
+                    if (postingsLists[i].get(k).docID == currDocId) {
+                        int tf = postingsLists[i].get(k).positions.size();
+                        double weight;
+                        if (normType == NormalizationType.NUMBER_OF_WORDS) {
+                            weight = tf * idf / Index.docLengths.get(currDocId);
+                        }
+                        else {
+                            weight = tf * idf / Math.sqrt(Index.docSqrEuclLengths.get(currDocId));
+                        }
+                        
+                        tfidf[j] += weight * weight_queryterm;
+                    }
                 }
-                if (postingsLists[i].get(k).docID == currDocId) {
-                    int tf = postingsLists[i].get(k).positions.size();
-                    double weight;
-                    if (normType == NormalizationType.NUMBER_OF_WORDS) {
-                        weight = tf * idf / Index.docLengths.get(currDocId);
-                    }
-                    else {
-                        weight = tf * idf / Math.sqrt(Index.docSqrEuclLengths.get(currDocId));
-                    }
+            }
+            else {
+                List<KGramPostingsEntry> kgPostings = kgIndex.getWildCardPostings(term);
+                for (KGramPostingsEntry entry : kgPostings) {
+                    String token = kgIndex.getTermByID(entry.tokenID);
+                    PostingsList postingsList = index.getPostings(token);
+                    int df = postingsList.size();
+                    double idf = Math.log((double) Index.docNames.size() / df);
 
-                    tfidf[j] += weight * weight_queryterm;
+                    for (int j = 0, k = 0; j < resultList.size(); j++) {
+                        int currDocId = resultList.get(j).docID;
+                        while (k < postingsList.size() && postingsList.get(k).docID < currDocId) {
+                            k++;
+                        }
+                        if (k < postingsList.size() && postingsList.get(k).docID == currDocId) {
+                            int tf = postingsList.get(k).positions.size();
+                            double weight;
+                            if (normType == NormalizationType.NUMBER_OF_WORDS) {
+                                weight = tf * idf / Index.docLengths.get(currDocId);
+                            }
+                            else {
+                                weight = tf * idf / Math.sqrt(Index.docSqrEuclLengths.get(currDocId));
+                            }
+                            
+                            tfidf[j] += weight * weight_queryterm;
+                        }
+                    }
                 }
             }
         }

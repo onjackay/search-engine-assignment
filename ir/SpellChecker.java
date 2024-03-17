@@ -7,6 +7,8 @@
 
 package ir;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -69,7 +71,7 @@ public class SpellChecker {
         //
         // YOUR CODE HERE
         //
-        return 0;
+        return (double) intersection / (szA + szB - intersection);
     }
 
     /**
@@ -83,8 +85,17 @@ public class SpellChecker {
         //
         // YOUR CODE HERE
         //
-
-        return -1;
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+        for (int i = 0; i < s1.length(); i++) {
+            for (int j = 0; j < s2.length(); j++) {
+                if (s1.charAt(i) == s2.charAt(j)) {
+                    dp[i + 1][j + 1] = dp[i][j];
+                } else {
+                    dp[i + 1][j + 1] = Math.min(dp[i][j + 1] + 1, dp[i + 1][j] + 1);
+                }
+            }
+        }
+        return dp[s1.length()][s2.length()];
     }
 
     /**
@@ -95,7 +106,36 @@ public class SpellChecker {
         //
         // YOUR CODE HERE
         //
+        
+        /** Single-term query */
+        if (query.size() == 1) {
+            String term = query.queryterm.get(0).term;
+            HashSet<String> candidates = kgIndex.getKGramWords(term);
+            HashSet<String> kgrams = kgIndex.getKGrams(term);
 
+            candidates.removeIf(word -> {
+                String augmentedWord = "$" + word + "$";
+                int intersection = 0;
+                for (int i = 0; i < augmentedWord.length() - kgIndex.getK() + 1; i++) {
+                    String kgram = augmentedWord.substring(i, i + kgIndex.getK());
+                    if (kgrams.contains(kgram)) {
+                        intersection++;
+                    }
+                }
+                return jaccard(kgrams.size(), augmentedWord.length() - kgIndex.getK() + 1, intersection) < JACCARD_THRESHOLD || editDistance(term, word) > MAX_EDIT_DISTANCE;
+            });
+            KGramStat[] stats = new KGramStat[candidates.size()];
+            int j = 0;
+            for (String candidate : candidates) {
+                stats[j++] = new KGramStat(candidate, index.getPostings(candidate).size());
+            }
+            Arrays.sort(stats);
+            String result[] = new String[Math.min(limit, stats.length)];
+            for (int i = 0; i < Math.min(limit, stats.length); i++) {
+                result[i] = stats[stats.length - i - 1].getToken();
+            }
+            return result;
+        }
         return null;
     }
 
